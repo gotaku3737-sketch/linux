@@ -170,9 +170,14 @@ mod printing {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.pub_token.to_tokens(tokens);
             self.paren_token.surround(tokens, |tokens| {
-                // TODO: If we have a path which is not "self" or "super" or
-                // "crate", automatically add the "in" token.
-                self.in_token.to_tokens(tokens);
+                if self.path.is_ident("self")
+                    || self.path.is_ident("super")
+                    || self.path.is_ident("crate")
+                {
+                    self.in_token.to_tokens(tokens);
+                } else {
+                    crate::print::TokensOrDefault(&self.in_token).to_tokens(tokens);
+                }
                 path::printing::print_path(tokens, &self.path, PathStyle::Mod);
             });
         }
