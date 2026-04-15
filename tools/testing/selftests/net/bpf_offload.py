@@ -561,7 +561,7 @@ def check_dev_info_removed(prog_file=None, map_file=None):
     bpftool_map_list_wait(expected=0)
     ret, err = bpftool("map show pin %s" % (map_file), fail=False)
     fail(ret == 0, "Showing map with removed device did not fail")
-    fail(err["error"].find("No such device") == -1,
+    fail("No such device" not in err["error"],
          "Showing map with removed device expected ENODEV, error is %s" %
          (err["error"]))
 
@@ -722,7 +722,7 @@ if not os.path.isdir("/sys/bus/netdevsim/"):
 
 # Check debugfs
 _, out = cmd("mount")
-if out.find("/sys/kernel/debug type debugfs") == -1:
+if "/sys/kernel/debug type debugfs" not in out:
     cmd("mount -t debugfs none /sys/kernel/debug")
 
 # Check samples are compiled
@@ -735,7 +735,7 @@ for s in samples:
 # Check if iproute2 is built with libmnl (needed by extack support)
 _, _, err = cmd("tc qdisc delete dev lo handle 0",
                 fail=False, include_stderr=True)
-if err.find("Error: Failed to find qdisc with specified handle.") == -1:
+if "Error: Failed to find qdisc with specified handle." not in err:
     print("Warning: no extack message in iproute2 output, libmnl missing?")
     log("Warning: no extack message in iproute2 output, libmnl missing?", "")
     skip_extack = True
@@ -1183,7 +1183,7 @@ try:
                            (m["id"], int2str("I", 3), int2str("Q", 3 * 3)),
                            fail=False)
         fail(ret == 0, "updated non-existing key")
-        fail(err["error"].find("No such file or directory") == -1,
+        fail("No such file or directory" not in err["error"],
              "expected ENOENT, error is '%s'" % (err["error"]))
 
     start_test("Test map update (noexist)...")
@@ -1193,7 +1193,7 @@ try:
                                (m["id"], int2str("I", i), int2str("Q", i * 3)),
                                fail=False)
         fail(ret == 0, "updated existing key")
-        fail(err["error"].find("File exists") == -1,
+        fail("File exists" not in err["error"],
              "expected EEXIST, error is '%s'" % (err["error"]))
 
     start_test("Test map dump...")
@@ -1217,7 +1217,7 @@ try:
         ret, err = bpftool("map getnext id %d key %s" %
                            (m["id"], int2str("I", 1)), fail=False)
         fail(ret == 0, "got next key past the end of map")
-        fail(err["error"].find("No such file or directory") == -1,
+        fail("No such file or directory" not in err["error"],
              "expected ENOENT, error is '%s'" % (err["error"]))
 
     start_test("Test map delete (htab)...")
@@ -1229,7 +1229,7 @@ try:
         ret, err = bpftool("map delete id %d key %s" %
                            (htab["id"], int2str("I", i)), fail=False)
         fail(ret == 0, "removed entry from an array")
-        fail(err["error"].find("No such file or directory") == -1,
+        fail("No such file or directory" not in err["error"],
              "expected ENOENT, error is '%s'" % (err["error"]))
 
     start_test("Test map remove...")
