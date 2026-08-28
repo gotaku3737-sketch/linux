@@ -3202,10 +3202,15 @@ class ProcessMonitor:
 		self.proclist = dict()
 		self.running = False
 	def procstat(self):
-		c = ['cat /proc/[1-9]*/stat 2>/dev/null']
-		process = Popen(c, shell=True, stdout=PIPE)
 		running = dict()
-		for line in process.stdout:
+		for d in os.listdir('/proc'):
+			if not d.isdigit():
+				continue
+			try:
+				with open(os.path.join('/proc', d, 'stat'), 'rb') as f:
+					line = f.read()
+			except:
+				continue
 			data = ascii(line).split()
 			pid = data[0]
 			name = re.sub('[()]', '', data[1])
@@ -3222,7 +3227,6 @@ class ProcessMonitor:
 				val['kern'] = kern
 			if ujiff > 0 or kjiff > 0:
 				running[pid] = ujiff + kjiff
-		process.wait()
 		out = ['']
 		for pid in running:
 			jiffies = running[pid]
