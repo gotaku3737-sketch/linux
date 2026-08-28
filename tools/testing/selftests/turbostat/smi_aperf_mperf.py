@@ -108,50 +108,59 @@ SMI_APERF_MPERF_DEPENDENT_BICS = [
 if has_perf_access:
 	SMI_APERF_MPERF_DEPENDENT_BICS.append('IPC')
 
-for bic in SMI_APERF_MPERF_DEPENDENT_BICS:
-	for counter_source_opt in turbostat_counter_source_opts:
+def check_columns_or_fail(expected_columns: list, actual_columns: list):
+	for expected_column in expected_columns:
+		if expected_column not in actual_columns:
+			print(f'turbostat column check failed: missing column {expected_column.decode()}')
+			print(f'{expected_columns=}')
+			print(f'{actual_columns=}')
+			exit(1)
 
+for counter_source_opt in turbostat_counter_source_opts:
+	bics = []
+	for bic in SMI_APERF_MPERF_DEPENDENT_BICS:
 		# Ugly special case, but it is what it is..
 		if counter_source_opt == '--no-perf' and bic == 'IPC':
 			continue
+		bics.append(bic)
 
-		expected_columns = bic.encode()
-		expected_columns_debug = EXPECTED_COLUMNS_DEBUG_DEFAULT + f'\t{bic}'.encode()
+	if not bics:
+		continue
 
-		#
-		# Run turbostat for some time and send SIGINT
-		#
-		timeout_argv = [timeout, '--preserve-status', '-s', 'SIGINT', '-k', '3', '0.2s']
-		turbostat_argv = [turbostat, '-i', '0.50', '--show', bic]
+	bics_csv = ','.join(bics)
+	expected_columns = [bic.encode() for bic in bics]
+	expected_columns_debug = [col for col in EXPECTED_COLUMNS_DEBUG_DEFAULT.split(b'\t')] + expected_columns
 
-		if counter_source_opt:
-			turbostat_argv.append(counter_source_opt)
+	#
+	# Run turbostat for some time and send SIGINT
+	#
+	timeout_argv = [timeout, '--preserve-status', '-s', 'SIGINT', '-k', '3', '0.2s']
+	turbostat_argv = [turbostat, '-i', '0.50', '--show', bics_csv]
 
-		print(f'Running turbostat with {turbostat_argv=}... ', end = '', flush = True)
-		proc_turbostat = subprocess.run(timeout_argv + turbostat_argv, capture_output = True)
-		if proc_turbostat.returncode != 0:
-			print(f'turbostat failed with {proc_turbostat.returncode}')
-			exit(1)
+	if counter_source_opt:
+		turbostat_argv.append(counter_source_opt)
 
-		actual_columns = proc_turbostat.stdout.split(b'\n')[0]
-		if expected_columns != actual_columns:
-			print(f'turbostat column check failed\n{expected_columns=}\n{actual_columns=}')
-			exit(1)
-		print('OK')
+	print(f'Running turbostat with {turbostat_argv=}... ', end = '', flush = True)
+	proc_turbostat = subprocess.run(timeout_argv + turbostat_argv, capture_output = True)
+	if proc_turbostat.returncode != 0:
+		print(f'turbostat failed with {proc_turbostat.returncode}')
+		exit(1)
 
-		#
-		# Same, but with --debug
-		#
-		turbostat_argv.append('--debug')
+	actual_columns = proc_turbostat.stdout.split(b'\n')[0].split(b'\t')
+	check_columns_or_fail(expected_columns, actual_columns)
+	print('OK')
 
-		print(f'Running turbostat with {turbostat_argv=}... ', end = '', flush = True)
-		proc_turbostat = subprocess.run(timeout_argv + turbostat_argv, capture_output = True)
-		if proc_turbostat.returncode != 0:
-			print(f'turbostat failed with {proc_turbostat.returncode}')
-			exit(1)
+	#
+	# Same, but with --debug
+	#
+	turbostat_argv.append('--debug')
 
-		actual_columns = proc_turbostat.stdout.split(b'\n')[0]
-		if expected_columns_debug != actual_columns:
-			print(f'turbostat column check failed\n{expected_columns_debug=}\n{actual_columns=}')
-			exit(1)
-		print('OK')
+	print(f'Running turbostat with {turbostat_argv=}... ', end = '', flush = True)
+	proc_turbostat = subprocess.run(timeout_argv + turbostat_argv, capture_output = True)
+	if proc_turbostat.returncode != 0:
+		print(f'turbostat failed with {proc_turbostat.returncode}')
+		exit(1)
+
+	actual_columns = proc_turbostat.stdout.split(b'\n')[0].split(b'\t')
+	check_columns_or_fail(expected_columns_debug, actual_columns)
+	print('OK')
